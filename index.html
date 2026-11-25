@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>플래그 메모리</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:#0f172a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #app{max-width:1000px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+  button{font-family:inherit;cursor:pointer;border:none}
+
+  /* 상단 타이머 */
+  #top{position:sticky;top:0;z-index:20;background:#0f172aee;backdrop-filter:blur(6px);padding:12px 16px 10px;border-bottom:1px solid #1e293b}
+  #top .row{display:flex;align-items:center;gap:10px;font-size:14px}
+  #gameTitle{font-weight:900;font-size:18px;color:#facc15;letter-spacing:.5px;margin-right:6px}
+  #phaseLabel{font-weight:700;font-size:14px;color:#f8fafc;min-width:64px}
+  #roundLabel,#scoreLabel{color:#94a3b8}
+  #soundBtn{margin-left:auto;background:#1e293b;color:#e2e8f0;width:36px;height:32px;border-radius:8px;font-size:16px}
+  #top .row2{display:flex;align-items:center;gap:12px;margin-top:8px}
+  #topBar{flex:1;height:8px;background:#1e293b;border-radius:99px;overflow:hidden}
+  #topFill{height:100%;width:100%;background:#38bdf8;border-radius:99px}
+  #timeNum{font-variant-numeric:tabular-nums;font-weight:800;font-size:22px;min-width:52px;text-align:right}
+  #top.warn #topFill{background:#f97316}#top.warn #timeNum{color:#f97316}
+  #top.danger #topFill{background:#ef4444}#top.danger #timeNum{color:#ef4444}
+
+  #stage{flex:1;position:relative;padding:12px 8px}
+  .hidden{display:none!important}
+
+  /* 시작 화면 */
+  #startScreen{text-align:center;padding-top:12px}
+  h1{font-size:28px;margin-bottom:6px}
+  .desc{color:#94a3b8;font-size:14px;line-height:1.7;margin-bottom:22px}
+  .opt{margin:18px 0}
+  .opt h3{font-size:14px;color:#94a3b8;margin-bottom:10px;font-weight:600}
+  .seg{display:inline-flex;background:#1e293b;border-radius:12px;padding:4px;gap:4px}
+  .seg button{background:transparent;color:#cbd5e1;padding:10px 20px;border-radius:9px;font-size:16px;font-weight:600}
+  .seg button.on{background:#38bdf8;color:#0f172a}
+  .seg-note{font-size:12px;color:#64748b;margin-top:8px}
+  .bigBtn{margin-top:26px;background:#facc15;color:#1e293b;font-size:20px;font-weight:800;padding:16px 56px;border-radius:14px;box-shadow:0 6px 0 #a16207}
+  .bigBtn:active{transform:translateY(4px);box-shadow:0 2px 0 #a16207}
+  #loadMsg{margin-top:14px;color:#94a3b8;font-size:14px;min-height:20px}
+
+  /* 암기 화면 */
+  #memScreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh}
+  #memRound{font-size:15px;color:#94a3b8;margin-bottom:18px;font-weight:600}
+  #memRound b{color:#facc15}
+  .memFlagWrap{width:min(78vw,460px);aspect-ratio:3/2;display:flex;align-items:center;justify-content:center;background:#1e293b;border-radius:14px;padding:16px}
+  #memFlag{max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 4px 20px #0008}
+  #memFlag.pop{animation:pop .18s ease-out}
+  @keyframes pop{from{transform:scale(.9);opacity:.3}to{transform:scale(1);opacity:1}}
+  #memDots{display:flex;gap:6px;margin-top:18px}
+  #memDots i{width:9px;height:9px;border-radius:50%;background:#334155}
+  #memDots i.on{background:#facc15}
+
+  /* 격자 */
+  #grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:8px}
+  .cell{position:relative;aspect-ratio:3/2;background:#f8fafc;border-radius:7px;border:3px solid transparent;display:flex;align-items:center;justify-content:center;transition:transform .12s,border-color .12s}
+  .cell img{max-width:96%;max-height:92%;object-fit:contain;box-shadow:0 0 0 1px #0002;pointer-events:none}
+  .cell:active{transform:scale(.95)}
+  .cell.sel{border-color:#3b82f6;background:#dbeafe}
+  .cell.sel::after{content:"✓";position:absolute;top:-8px;right:-8px;width:20px;height:20px;border-radius:50%;background:#3b82f6;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .cell.shake{animation:shake .3s}
+  @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  #grid.locked .cell{pointer-events:none}
+  /* 결과 테두리: 정답 노랑(바깥), 내 선택 파랑(안쪽) */
+  .cell.answer{outline:4px solid #facc15;outline-offset:2px;animation:glow .5s ease-out}
+  @keyframes glow{from{outline-color:#fff}to{outline-color:#facc15}}
+  .cell .name{position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;background:#1e293b;color:#f8fafc;display:none;z-index:2}
+  .cell.reveal .name{display:block}
+  .cell.dim{opacity:.45}
+
+  /* 60초 게이지 */
+  #gauge{margin:18px 6px 0;height:16px;background:#1e293b;border-radius:99px;overflow:hidden}
+  #gaugeFill{height:100%;width:100%;background:#22c55e;border-radius:99px}
+  #gauge.warn #gaugeFill{background:#f97316}
+  #gauge.danger #gaugeFill{background:#ef4444;animation:blink .5s infinite alternate}
+  @keyframes blink{to{opacity:.45}}
+  .gridInfo{display:flex;justify-content:space-between;align-items:center;margin:18px 8px 0}
+  #pickCount{font-size:16px;font-weight:700}
+  #pickCount b{color:#60a5fa}
+  #submitBtn,#nextBtn{background:#38bdf8;color:#0f172a;font-weight:800;font-size:16px;padding:10px 22px;border-radius:10px}
+  #submitBtn:disabled{background:#334155;color:#64748b;cursor:default}
+  #resultBar{display:flex;justify-content:space-between;align-items:center;margin:16px 6px 0;padding:12px 14px;background:#1e293b;border-radius:12px}
+  #resultText{font-weight:700;font-size:16px}
+  .legend{display:flex;gap:14px;font-size:12px;color:#94a3b8;margin:12px 6px 0}
+  .legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}
+  .legend .ly::before{border:3px solid #facc15}
+  .legend .lb::before{border:3px solid #3b82f6}
+
+  /* 중앙 카운트다운 / 결과 팝업 */
+  #countdown,#resultPop{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:10;pointer-events:none}
+  #cdNum{font-size:150px;font-weight:900;color:#facc15;text-shadow:0 8px 30px #0009}
+  #cdNum.beat{animation:beat 1s ease-out}
+  @keyframes beat{0%{transform:scale(1.5);opacity:0}20%{transform:scale(1);opacity:1}80%{opacity:1}100%{transform:scale(.7);opacity:0}}
+  #cdHint{position:absolute;top:22%;color:#94a3b8;font-size:16px;font-weight:600}
+  #resultPop .card{background:#0f172af2;border:2px solid #facc15;border-radius:18px;padding:26px 40px;text-align:center;box-shadow:0 10px 40px #000a;animation:popIn .35s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes popIn{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+  #popText{font-size:34px;font-weight:900}
+  #popText b{color:#facc15;font-size:46px}
+  #popSub{color:#94a3b8;margin-top:6px;font-size:14px}
+
+  /* 최종 화면 */
+  #finalScreen{text-align:center;padding-top:10px}
+  #finalTotal{font-size:56px;font-weight:900;color:#facc15;margin:10px 0 2px}
+  #finalSub{color:#94a3b8;margin-bottom:20px}
+  #finalTable{margin:0 auto;border-collapse:collapse;min-width:240px}
+  #finalTable td,#finalTable th{padding:7px 18px;border-bottom:1px solid #1e293b;font-size:15px}
+  #finalTable th{color:#94a3b8;font-weight:600}
+  .barMini{display:inline-block;height:8px;background:#facc15;border-radius:4px;vertical-align:middle;margin-left:8px}
+
+  @media (max-width:480px){
+    #grid{gap:6px;padding:3px}
+    #stage{padding:10px 4px}
+    .cell{border-width:2px}
+    .cell.answer{outline-width:3px;outline-offset:1px}
+    .cell .name{font-size:8.5px;padding:0 4px}
+    #cdNum{font-size:120px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div class="row">
+      <span id="gameTitle">플래그 메모리</span>
+      <span id="roundLabel"></span>
+      <span id="scoreLabel"></span>
+      <button id="soundBtn" title="소리 켜기/끄기">🔊</button>
+    </div>
+    <div class="row2">
+      <span id="phaseLabel">대기</span>
+      <div id="topBar"><div id="topFill"></div></div>
+      <span id="timeNum">--</span>
+    </div>
+  </header>
+
+  <main id="stage">
+    <!-- 시작 -->
+    <section id="startScreen">
+      <h1>플래그 메모리</h1>
+      <p class="desc">국기 10개가 1초씩 3번 지나갑니다 (30초).<br>5초 뒤 나타나는 25개 국기 중<br>앞에서 본 국기 <b>5개</b>를 1분 안에 찾으세요.</p>
+      <div class="opt">
+        <h3>판 수</h3>
+        <div class="seg" id="roundSeg">
+          <button data-v="3" class="on">3판</button><button data-v="5">5판</button><button data-v="10">10판</button>
+        </div>
+      </div>
+      <div class="opt">
+        <h3>난이도</h3>
+        <div class="seg" id="diffSeg">
+          <button data-v="easy">하</button><button data-v="normal" class="on">중</button><button data-v="hard">상</button>
+        </div>
+        <div class="seg-note" id="diffNote"></div>
+      </div>
+      <button class="bigBtn" id="startBtn">시작</button>
+      <div id="loadMsg"></div>
+    </section>
+
+    <!-- 암기 -->
+    <section id="memScreen" class="hidden">
+      <div id="memRound"></div>
+      <div class="memFlagWrap"><img id="memFlag" alt=""></div>
+      <div id="memDots"></div>
+    </section>
+
+    <!-- 선택 -->
+    <section id="gridScreen" class="hidden">
+      <div id="grid"></div>
+            <div class="gridInfo" id="gridInfo">
+        <span id="pickCount">선택 <b>0</b> / 5</span>
+        <button id="submitBtn" disabled>제출</button>
+      </div>
+      <div class="legend hidden" id="legend"><span class="ly">정답</span><span class="lb">내 선택</span></div>
+      <div id="resultBar" class="hidden">
+        <span id="resultText"></span>
+        <button id="nextBtn">다음 판</button>
+      </div>
+    </section>
+
+    <!-- 최종 -->
+    <section id="finalScreen" class="hidden">
+      <h1>최종 결과</h1>
+      <div id="finalTotal"></div>
+      <div id="finalSub"></div>
+      <table id="finalTable"></table>
+      <button class="bigBtn" id="againBtn">다시 하기</button>
+    </section>
+
+    <div id="countdown" class="hidden"><div id="cdHint">곧 25개 국기가 나타납니다</div><span id="cdNum"></span></div>
+    <div id="resultPop" class="hidden"><div class="card"><div id="popText"></div><div id="popSub"></div></div></div>
+  </main>
+</div>
+
+<script>
+/* ===================== 국기 데이터 (올림픽 참가국) ===================== */
+// 차이니스 타이베이는 올림픽 전용 깃발을 써서 제외
+const NOC_RAW = `
+dz:알제리,ao:앙골라,bj:베냉,bw:보츠와나,bf:부르키나파소,bi:부룬디,cm:카메룬,cv:카보베르데,cf:중앙아프리카공화국,td:차드,km:코모로,cg:콩고,cd:콩고민주공화국,ci:코트디부아르,dj:지부티,eg:이집트,gq:적도기니,er:에리트레아,sz:에스와티니,et:에티오피아,ga:가봉,gm:감비아,gh:가나,gn:기니,gw:기니비사우,ke:케냐,ls:레소토,lr:라이베리아,ly:리비아,mg:마다가스카르,mw:말라위,ml:말리,mr:모리타니,mu:모리셔스,ma:모로코,mz:모잠비크,na:나미비아,ne:니제르,ng:나이지리아,rw:르완다,st:상투메프린시페,sn:세네갈,sc:세이셸,sl:시에라리온,so:소말리아,za:남아프리카공화국,ss:남수단,sd:수단,tz:탄자니아,tg:토고,tn:튀니지,ug:우간다,zm:잠비아,zw:짐바브웨,
+ag:앤티가바부다,ar:아르헨티나,aw:아루바,bs:바하마,bb:바베이도스,bz:벨리즈,bm:버뮤다,bo:볼리비아,br:브라질,vg:영국령 버진아일랜드,ca:캐나다,ky:케이맨 제도,cl:칠레,co:콜롬비아,cr:코스타리카,cu:쿠바,dm:도미니카연방,do:도미니카공화국,ec:에콰도르,sv:엘살바도르,gd:그레나다,gt:과테말라,gy:가이아나,ht:아이티,hn:온두라스,jm:자메이카,mx:멕시코,ni:니카라과,pa:파나마,py:파라과이,pe:페루,pr:푸에르토리코,kn:세인트키츠네비스,lc:세인트루시아,vc:세인트빈센트그레나딘,sr:수리남,tt:트리니다드토바고,us:미국,uy:우루과이,ve:베네수엘라,vi:미국령 버진아일랜드,
+af:아프가니스탄,bh:바레인,bd:방글라데시,bt:부탄,bn:브루나이,kh:캄보디아,cn:중국,hk:홍콩,in:인도,id:인도네시아,ir:이란,iq:이라크,jp:일본,jo:요르단,kz:카자흐스탄,kp:북한,kr:대한민국,kw:쿠웨이트,kg:키르기스스탄,la:라오스,lb:레바논,my:말레이시아,mv:몰디브,mn:몽골,mm:미얀마,np:네팔,om:오만,pk:파키스탄,ps:팔레스타인,ph:필리핀,qa:카타르,sa:사우디아라비아,sg:싱가포르,lk:스리랑카,sy:시리아,tj:타지키스탄,th:태국,tl:동티모르,tm:투르크메니스탄,ae:아랍에미리트,uz:우즈베키스탄,vn:베트남,ye:예멘,
+al:알바니아,ad:안도라,am:아르메니아,at:오스트리아,az:아제르바이잔,by:벨라루스,be:벨기에,ba:보스니아헤르체고비나,bg:불가리아,hr:크로아티아,cy:키프로스,cz:체코,dk:덴마크,ee:에스토니아,fi:핀란드,fr:프랑스,ge:조지아,de:독일,gb:영국,gr:그리스,hu:헝가리,is:아이슬란드,ie:아일랜드,il:이스라엘,it:이탈리아,xk:코소보,lv:라트비아,li:리히텐슈타인,lt:리투아니아,lu:룩셈부르크,mt:몰타,md:몰도바,mc:모나코,me:몬테네그로,nl:네덜란드,mk:북마케도니아,no:노르웨이,pl:폴란드,pt:포르투갈,ro:루마니아,ru:러시아,sm:산마리노,rs:세르비아,sk:슬로바키아,si:슬로베니아,es:스페인,se:스웨덴,ch:스위스,tr:튀르키예,ua:우크라이나,
+as:아메리칸사모아,au:호주,ck:쿡 제도,fj:피지,gu:괌,ki:키리바시,mh:마셜 제도,fm:미크로네시아,nr:나우루,nz:뉴질랜드,pw:팔라우,pg:파푸아뉴기니,ws:사모아,sb:솔로몬 제도,to:통가,tv:투발루,vu:바누아투`;
+
+const NAMES = {};
+NOC_RAW.split(',').map(s => s.trim()).filter(Boolean).forEach(s => {
+  const [c, n] = s.split(':'); NAMES[c] = n;
+});
+const ALL = Object.keys(NAMES);
+
+const EASY = 'kr us jp cn gb fr de it es ca br ar mx au nz ru in id th vn ph my sg sa tr eg za ng ke gr nl be ch se no fi dk pt ie pl ua il ir cu jm kp at cz hu cl'.split(' ');
+const MEDIUM_EXTRA = 'co pe ve uy ec bo py cr pa do pr ht hr rs ro bg sk si ee lv lt is lu mt cy ge am az kz uz mn np pk bd lk mm kh la qa ae kw iq sy jo lb ma tn dz et gh cm sn ci'.split(' ');
+const POOLS = {
+  easy: EASY,
+  normal: [...EASY, ...MEDIUM_EXTRA],
+  hard: ALL
+};
+
+// 서로 헷갈리기 쉬운 국기 묶음
+const SIMILAR = [
+  'ro td ad md', 'id mc pl', 'ie ci it', 'nl lu py fr', 'ru sk si rs hr cz',
+  'au nz ck tv fj', 've ec co', 'ne in', 'gn ml sn cm', 'gh bo lt et',
+  'sv ni hn gt ar', 'jo ps sd ae kw', 'iq sy eg ye', 'no is dk fi se',
+  'at lv lb', 'de be ug', 'hu it ir bg tj', 'my us lr pr cu',
+  'tr tn', 'qa bh', 'cl cu pr', 'sg id mc', 'mx it ie', 'ht li',
+  'ki ws to', 'dm gd kn', 'ee bw', 'sa pk dz', 'kg vn cn', 'jm br gy'
+].map(s => s.split(' '));
+
+const FLAG = c => `https://flagcdn.com/w320/${c}.png`;
+
+/* ===================== 효과음 (Web Audio) ===================== */
+let ac = null, soundOn = true;
+function audio() {
+  if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (ac.state === 'suspended') ac.resume();
+  return ac;
+}
+function tone(freq, dur, type = 'sine', vol = .2, when = 0, slideTo = null) {
+  if (!soundOn) return;
+  const c = audio(), t = c.currentTime + when;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + .01);
+  g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(c.destination);
+  o.start(t); o.stop(t + dur + .03);
+}
+const NOTES = [523, 659, 784, 1047, 1319];
+const SFX = {
+  start()  { tone(440,.12,'triangle',.2); tone(660,.12,'triangle',.2,.12); tone(880,.22,'triangle',.22,.24); },
+  tick()   { tone(1250,.035,'square',.04); },
+  chime()  { tone(784,.14,'sine',.18); tone(1046,.25,'sine',.18,.12); },
+  tock()   { tone(620,.09,'triangle',.22); },
+  ding()   { tone(1320,.4,'sine',.25); tone(1980,.3,'sine',.08); },
+  pick()   { tone(950,.05,'square',.07); tone(1500,.04,'square',.05,.03); },
+  unpick() { tone(420,.08,'triangle',.16); },
+  deny()   { tone(160,.22,'sawtooth',.12); },
+  warn()   { tone(880,.09,'square',.09); tone(880,.09,'square',.09,.14); },
+  urgent() { tone(1050,.06,'square',.09); tone(1050,.05,'square',.06,.25); },
+  buzzer() { tone(240,.55,'sawtooth',.16,0,120); },
+  correct(i){ tone(NOTES[Math.min(i,4)],.28,'sine',.25); },
+  wrong()  { tone(196,.22,'triangle',.2); },
+  fanfare(){ [523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.2,i*.13)); tone(1047,.6,'triangle',.22,.55); tone(1319,.6,'sine',.12,.55); },
+  soft()   { tone(659,.25,'sine',.18); tone(523,.45,'sine',.18,.22); }
+};
+
+/* ===================== 유틸 ===================== */
+const $ = id => document.getElementById(id);
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const sample = (a, n) => shuffle(a).slice(0, n);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+function preload(codes) {
+  return Promise.all(codes.map(c => new Promise(res => {
+    const im = new Image(); im.onload = im.onerror = res; im.src = FLAG(c);
+  })));
+}
+
+let loop = null;
+function runTimer(sec, onTick) {
+  return new Promise(resolve => {
+    const t0 = performance.now();
+    const step = now => {
+      const el = (now - t0) / 1000;
+      const remain = Math.max(0, sec - el);
+      onTick(el, remain);
+      if (remain <= 0) { loop = null; resolve('timeout'); return; }
+      loop = { id: requestAnimationFrame(step), resolve };
+    };
+    loop = { id: requestAnimationFrame(step), resolve };
+  });
+}
+function stopTimer(reason) {
+  if (loop) { cancelAnimationFrame(loop.id); const r = loop.resolve; loop = null; r(reason); }
+}
+
+function setTop(label, remain, total, level = '') {
+  $('phaseLabel').textContent = label;
+  $('timeNum').textContent = remain == null ? '--' : Math.ceil(remain - 1e-6);
+  $('topFill').style.width = total ? (remain / total * 100) + '%' : '0%';
+  $('top').className = level;
+}
+function show(id) {
+  ['startScreen', 'memScreen', 'gridScreen', 'finalScreen'].forEach(s => $(s).classList.toggle('hidden', s !== id));
+}
+
+/* ===================== 게임 상태 ===================== */
+const state = { rounds: 3, diff: 'normal', round: 0, scores: [], usedShown: new Set() };
+
+function makeRound() {
+  const pool = POOLS[state.diff];
+  let avail = pool.filter(c => !state.usedShown.has(c));
+  if (avail.length < 10 + 20) { state.usedShown.clear(); avail = pool.slice(); }
+  const shown = sample(avail, 10);
+  shown.forEach(c => state.usedShown.add(c));
+  const answers = sample(shown, 5);
+  const exclude = new Set(shown);
+
+  let distract = [];
+  if (state.diff === 'hard') {
+    const sim = new Set();
+    answers.forEach(a => SIMILAR.forEach(g => { if (g.includes(a)) g.forEach(x => { if (!exclude.has(x) && NAMES[x]) sim.add(x); }); }));
+    distract = sample([...sim], 20);
+  }
+  let rest = pool.filter(c => !exclude.has(c) && !distract.includes(c));
+  if (state.diff === 'easy') {
+    // 정답과 비슷한 국기는 빼고 고르기
+    const avoid = new Set();
+    shown.forEach(a => SIMILAR.forEach(g => { if (g.includes(a)) g.forEach(x => avoid.add(x)); }));
+    const clean = rest.filter(c => !avoid.has(c));
+    if (clean.length >= 20) rest = clean;
+  }
+  distract = distract.concat(sample(rest, 20 - distract.length));
+  if (distract.length < 20) distract = distract.concat(sample(ALL.filter(c => !exclude.has(c) && !distract.includes(c)), 20 - distract.length));
+
+  return { shown, answers, grid: shuffle([...answers, ...distract]) };
+}
+
+/* ===================== 진행 ===================== */
+async function startGame() {
+  audio();
+  state.round = 0; state.scores = []; state.usedShown.clear();
+  nextRound();
+}
+
+async function nextRound() {
+  state.round++;
+  $('roundLabel').textContent = `${state.round} / ${state.rounds}판`;
+  $('scoreLabel').textContent = `누적 ${state.scores.reduce((a, b) => a + b, 0)}점`;
+  const R = makeRound();
+
+  setTop('준비 중', null, 0);
+  $('startBtn').disabled = true;
+  await Promise.race([preload([...R.shown, ...R.grid]), wait(6000)]);
+  $('startBtn').disabled = false;
+
+  // 0. 시작 3초 카운트
+  show(null);
+  await centerCount(3, `${state.round}판 · 국기 10개를 기억하세요`, '시작');
+
+  // 1. 암기 30초 (10개 × 1초 × 3회, 3회 모두 같은 순서)
+  const order = shuffle(R.shown);
+  const seq = [order, order, order];
+  show('memScreen');
+  $('memDots').innerHTML = '<i></i>'.repeat(10);
+  const dots = [...$('memDots').children];
+  SFX.start();
+  let last = -1;
+  await runTimer(30, (el, remain) => {
+    setTop('암기', remain, 30);
+    const idx = Math.min(29, Math.floor(el));
+    if (idx !== last) {
+      const r = Math.floor(idx / 10), k = idx % 10;
+      if (r !== Math.floor(last / 10) && last >= 0) SFX.chime(); else SFX.tick();
+      last = idx;
+      const img = $('memFlag');
+      img.src = FLAG(seq[r][k]);
+      img.classList.remove('pop'); void img.offsetWidth; img.classList.add('pop');
+      $('memRound').innerHTML = `<b>${r + 1}회차</b> / 3 · ${k + 1} / 10`;
+      dots.forEach((d, i) => d.classList.toggle('on', i <= k));
+    }
+  });
+
+  // 2. 가림 5초 (중앙 카운트다운)
+  $('memScreen').classList.add('hidden');
+  await centerCount(5, '곧 25개 국기가 나타납니다', '가림');
+  SFX.ding();
+
+  // 3. 선택 60초
+  const picked = await selectPhase(R);
+
+  // 4. 채점 + 결과
+  await reveal(R, picked);
+}
+
+async function centerCount(sec, hint, label) {
+  $('cdHint').textContent = hint;
+  $('cdNum').textContent = '';
+  $('countdown').classList.remove('hidden');
+  let lastN = 0;
+  await runTimer(sec, (el, remain) => {
+    setTop(label, remain, sec);
+    const n = Math.ceil(remain - 1e-6);
+    if (n !== lastN && n > 0) {
+      lastN = n; SFX.tock();
+      const s = $('cdNum'); s.textContent = n;
+      s.classList.remove('beat'); void s.offsetWidth; s.classList.add('beat');
+    }
+  });
+  $('countdown').classList.add('hidden');
+}
+
+function selectPhase(R) {
+  show('gridScreen');
+  const grid = $('grid');
+  grid.className = ''; grid.innerHTML = '';
+  $('legend').classList.add('hidden');
+  $('resultBar').classList.add('hidden');
+  $('gridInfo').classList.remove('hidden');
+  const picked = new Set();
+  const updateCount = () => {
+    $('pickCount').innerHTML = `선택 <b>${picked.size}</b> / 5`;
+    $('submitBtn').disabled = picked.size !== 5;
+  };
+  updateCount();
+
+  R.grid.forEach(code => {
+    const cell = document.createElement('div');
+    cell.className = 'cell'; cell.dataset.code = code;
+    cell.innerHTML = `<img src="${FLAG(code)}" alt=""><span class="name">${NAMES[code]}</span>`;
+    cell.addEventListener('click', () => {
+      if (picked.has(code)) { picked.delete(code); cell.classList.remove('sel'); SFX.unpick(); }
+      else if (picked.size >= 5) { SFX.deny(); cell.classList.remove('shake'); void cell.offsetWidth; cell.classList.add('shake'); }
+      else { picked.add(code); cell.classList.add('sel'); SFX.pick(); }
+      updateCount();
+    });
+    grid.appendChild(cell);
+  });
+
+  $('submitBtn').onclick = () => stopTimer('submit');
+
+  let lvl = '', lastSec = 60;
+  return runTimer(60, (el, remain) => {
+    const level = remain <= 5 ? 'danger' : remain <= 10 ? 'warn' : '';
+    if (level !== lvl) { if (level === 'warn') SFX.warn(); lvl = level; }
+    const sec = Math.ceil(remain - 1e-6);
+    if (sec !== lastSec) { if (sec <= 5 && sec > 0) SFX.urgent(); lastSec = sec; }
+    setTop('선택', remain, 60, level);
+  }).then(reason => {
+    if (reason === 'timeout') SFX.buzzer();
+    grid.classList.add('locked');
+    $('submitBtn').disabled = true;
+    return picked;
+  });
+}
+
+async function reveal(R, picked) {
+  setTop('결과', 0, 60);
+  const cells = [...$('grid').children];
+  const ans = new Set(R.answers);
+  await wait(500);
+
+  // 내 선택: 파란 테두리 유지 / 정답: 노란 테두리
+  cells.forEach(c => { if (picked.has(c.dataset.code)) { c.classList.add('reveal'); } else if (!ans.has(c.dataset.code)) c.classList.add('dim'); });
+  let n = 0;
+  for (const c of cells) {
+    if (!ans.has(c.dataset.code)) continue;
+    c.classList.add('answer', 'reveal');
+    if (picked.has(c.dataset.code)) { SFX.correct(n); n++; } else SFX.wrong();
+    await wait(380);
+  }
+  $('legend').classList.remove('hidden');
+  $('gridInfo').classList.add('hidden');
+
+  state.scores.push(n);
+  const total = state.scores.reduce((a, b) => a + b, 0);
+  $('scoreLabel').textContent = `누적 ${total}점`;
+
+  // 중앙 결과 표시
+  $('popText').innerHTML = `5개 중 <b>${n}</b>개 정답`;
+  $('popSub').textContent = `${state.round}판 · 누적 ${total} / ${state.round * 5}점`;
+  $('resultPop').classList.remove('hidden');
+  n >= 4 ? SFX.fanfare() : SFX.soft();
+  await wait(2000);
+  $('resultPop').classList.add('hidden');
+
+  $('resultText').textContent = `${state.round}판: ${n} / 5점`;
+  const last = state.round >= state.rounds;
+  $('nextBtn').textContent = last ? '최종 결과' : '다음 판';
+  $('resultBar').classList.remove('hidden');
+  $('nextBtn').onclick = () => last ? finish() : nextRound();
+}
+
+function finish() {
+  show('finalScreen');
+  const total = state.scores.reduce((a, b) => a + b, 0), max = state.rounds * 5;
+  setTop('최종 결과', null, 0);
+  $('roundLabel').textContent = `${state.rounds}판 완료`;
+  $('finalTotal').textContent = `${total} / ${max}점`;
+  const diffName = { easy: '하', normal: '중', hard: '상' }[state.diff];
+  $('finalSub').textContent = `난이도 ${diffName} · 정답률 ${Math.round(total / max * 100)}%`;
+  $('finalTable').innerHTML = '<tr><th>판</th><th>점수</th></tr>' +
+    state.scores.map((s, i) => `<tr><td>${i + 1}판</td><td style="text-align:left">${s} / 5<span class="barMini" style="width:${s * 14}px"></span></td></tr>`).join('');
+  total / max >= .7 ? SFX.fanfare() : SFX.soft();
+}
+
+/* ===================== 시작 화면 ===================== */
+const DIFF_NOTE = {
+  easy: `잘 알려진 ${POOLS.easy.length}개국 · 헷갈리는 국기 없음`,
+  normal: `${POOLS.normal.length}개국 · 무작위 보기`,
+  hard: `올림픽 참가국 ${POOLS.hard.length}개국 전체 · 비슷한 국기 섞음`
+};
+function seg(id, key) {
+  $(id).querySelectorAll('button').forEach(b => b.onclick = () => {
+    $(id).querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    state[key] = key === 'rounds' ? +b.dataset.v : b.dataset.v;
+    if (key === 'diff') $('diffNote').textContent = DIFF_NOTE[state.diff];
+    SFX.pick();
+  });
+}
+seg('roundSeg', 'rounds'); seg('diffSeg', 'diff');
+$('diffNote').textContent = DIFF_NOTE[state.diff];
+$('startBtn').onclick = startGame;
+$('againBtn').onclick = () => { show('startScreen'); $('roundLabel').textContent = ''; $('scoreLabel').textContent = ''; setTop('대기', null, 0); };
+$('soundBtn').onclick = () => { soundOn = !soundOn; $('soundBtn').textContent = soundOn ? '🔊' : '🔇'; if (soundOn) audio(); };
+setTop('대기', null, 0);
+</script>
+</body>
+</html>
