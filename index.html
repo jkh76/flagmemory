@@ -11,12 +11,14 @@
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
+  body{padding:16px;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));background:radial-gradient(ellipse at top,#1a2440,#0b1222 70%)}
   body{background:#0f172a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  #app{max-width:1000px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+  /* 전체 게임 박스 */
+  #app{max-width:1040px;margin:0 auto;height:100%;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;background:#0f172a;border:2px solid #facc15b3;border-radius:22px;box-shadow:0 0 0 6px #facc1514,0 20px 60px #000a}
   button{font-family:inherit;cursor:pointer;border:none}
 
   /* 상단 타이머 */
-  #top{position:sticky;top:0;z-index:20;background:#0f172aee;backdrop-filter:blur(6px);padding:12px 16px 10px;border-bottom:1px solid #1e293b}
+  #top{position:sticky;top:0;z-index:20;background:#0f172aee;backdrop-filter:blur(6px);padding:12px 18px 10px;border-bottom:1px solid #facc1533}
   #top .row{display:flex;align-items:center;gap:10px;font-size:14px}
   #gameTitle{font-weight:900;font-size:18px;color:#facc15;letter-spacing:.5px;margin-right:6px}
   #phaseLabel{font-weight:700;font-size:14px;color:#f8fafc;min-width:64px}
@@ -29,22 +31,58 @@
   #top.warn #topFill{background:#f97316}#top.warn #timeNum{color:#f97316}
   #top.danger #topFill{background:#ef4444}#top.danger #timeNum{color:#ef4444}
 
-  #stage{flex:1;position:relative;padding:12px 8px}
+  #stage{flex:1;position:relative;padding:12px 10px;display:flex;flex-direction:column}
   .hidden{display:none!important}
 
   /* 시작 화면 */
-  #startScreen{text-align:center;padding-top:12px}
+  #startScreen{flex:1;display:flex;align-items:center;justify-content:center;padding:8px}
+  #startScreen.hidden{display:none!important}
+  .startCard{width:100%;max-width:520px;background:linear-gradient(180deg,#172036,#131c30);border:1px solid #facc1559;border-radius:18px;box-shadow:0 14px 40px #0006,inset 0 1px 0 #ffffff0d;padding:28px 26px;text-align:center}
+  .startCard .col{display:flex;flex-direction:column;align-items:center}
   h1{font-size:28px;margin-bottom:6px}
-  .desc{color:#94a3b8;font-size:14px;line-height:1.7;margin-bottom:22px}
-  .opt{margin:18px 0}
+  .startCard h1{font-size:30px;color:#facc15;letter-spacing:.5px}
+  .startCard .tag{color:#94a3b8;font-size:14px;margin-bottom:18px}
+  .steps{list-style:none;display:flex;flex-direction:column;gap:10px;width:100%;margin-bottom:6px;text-align:left}
+  .steps li{display:flex;align-items:center;gap:12px;background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:10px 14px;font-size:14px;color:#cbd5e1;line-height:1.45;word-break:keep-all}
+  .steps li i{flex:none;width:30px;height:30px;border-radius:50%;background:#1e293b;color:#facc15;font-style:normal;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .steps li b{color:#f8fafc}
+  .steps li em{font-style:normal;color:#38bdf8;font-weight:700}
+  .opt{margin:16px 0 0;width:100%}
   .opt h3{font-size:14px;color:#94a3b8;margin-bottom:10px;font-weight:600}
-  .seg{display:inline-flex;background:#1e293b;border-radius:12px;padding:4px;gap:4px}
-  .seg button{background:transparent;color:#cbd5e1;padding:10px 20px;border-radius:9px;font-size:16px;font-weight:600}
+  .seg{display:inline-flex;background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:4px;gap:4px}
+  .seg button{background:transparent;color:#cbd5e1;padding:10px 22px;border-radius:9px;font-size:16px;font-weight:600}
   .seg button.on{background:#38bdf8;color:#0f172a}
-  .seg-note{font-size:12px;color:#64748b;margin-top:8px}
+  .seg-note{font-size:12px;color:#64748b;margin-top:8px;min-height:16px}
   .bigBtn{margin-top:26px;background:#facc15;color:#1e293b;font-size:20px;font-weight:800;padding:16px 56px;border-radius:14px;box-shadow:0 6px 0 #a16207}
   .bigBtn:active{transform:translateY(4px);box-shadow:0 2px 0 #a16207}
-  #loadMsg{margin-top:14px;color:#94a3b8;font-size:14px;min-height:20px}
+  #loadMsg{margin-top:10px;color:#94a3b8;font-size:14px;min-height:20px}
+
+  /* 태블릿 가로: 박스 안 2단 배치 */
+  @media (min-width:820px) and (orientation:landscape){
+    .startCard{max-width:920px;display:grid;grid-template-columns:1.05fr 1fr;gap:0;padding:0;text-align:left;overflow:hidden}
+    .startCard .col{padding:36px 36px 30px}
+    .startCard .col.info{align-items:flex-start;border-right:1px solid #facc1533;background:#0f172a55}
+    .startCard .col.setup{justify-content:center}
+    .startCard h1{font-size:40px;margin-bottom:6px}
+    .startCard .tag{font-size:15px;margin-bottom:22px}
+    .steps{gap:12px}
+    .steps li{font-size:15px;padding:13px 16px}
+    .steps li i{width:34px;height:34px;font-size:15px}
+    .opt{text-align:center;margin-top:0}
+    .opt + .opt{margin-top:26px}
+    .opt h3{font-size:15px}
+    .seg button{padding:13px 30px;font-size:18px}
+    .seg-note{font-size:13px}
+    .bigBtn{margin-top:30px;width:100%;max-width:320px;font-size:22px;padding:18px 0}
+  }
+  @media (min-width:820px) and (orientation:landscape) and (max-height:700px){
+    .startCard .col{padding:24px 30px 20px}
+    .startCard h1{font-size:34px}
+    .startCard .tag{margin-bottom:14px}
+    .steps li{padding:9px 14px}
+    .opt + .opt{margin-top:16px}
+    .bigBtn{margin-top:20px;padding:15px 0}
+  }
 
   /* 암기 화면 */
   #memScreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh}
@@ -60,6 +98,8 @@
 
   /* 격자 */
   #grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:8px}
+  /* 가로 화면: 25칸이 박스 높이 안에 들어오도록 너비 제한 */
+  @media (orientation:landscape){#gridScreen{width:100%;margin:0 auto;max-width:calc(1.5 * (100vh - var(--gridReserve,266px)) - 32px);max-width:calc(1.5 * (100dvh - var(--gridReserve,266px)) - 32px)}}
   .cell{position:relative;aspect-ratio:3/2;background:#f8fafc;border-radius:7px;border:3px solid transparent;display:flex;align-items:center;justify-content:center;transition:transform .12s,border-color .12s}
   .cell img{max-width:96%;max-height:92%;object-fit:contain;box-shadow:0 0 0 1px #0002;pointer-events:none}
   .cell:active{transform:scale(.95)}
@@ -117,6 +157,8 @@
   @media (max-width:480px){
     #grid{gap:6px;padding:3px}
     #stage{padding:10px 4px}
+    body{padding:8px}
+    #app{border-radius:16px}
     .cell{border-width:2px}
     .cell.answer{outline-width:3px;outline-offset:1px}
     .cell .name{font-size:8.5px;padding:0 4px}
@@ -144,8 +186,17 @@
   <main id="stage">
     <!-- 시작 -->
     <section id="startScreen">
+     <div class="startCard">
+      <div class="col info">
       <h1>플래그 메모리</h1>
-      <p class="desc">국기 10개가 1초씩 3번 지나갑니다 (30초).<br>5초 뒤 나타나는 25개 국기 중<br>앞에서 본 국기 <b>5개</b>를 1분 안에 찾으세요.</p>
+      <p class="tag">국기를 외우고, 본 국기를 찾아내세요</p>
+      <ol class="steps">
+        <li><i>1</i><span><b>암기</b> · 국기 10개가 1초씩 3번 지나갑니다 <em>30초</em></span></li>
+        <li><i>2</i><span><b>가림</b> · 잠시 화면이 가려집니다 <em>5초</em></span></li>
+        <li><i>3</i><span><b>선택</b> · 25개 국기 중 앞에서 본 국기 <b>5개</b>를 찾으세요 <em>60초</em></span></li>
+      </ol>
+      </div>
+      <div class="col setup">
       <div class="opt">
         <h3>게임 수</h3>
         <div class="seg" id="roundSeg">
@@ -161,6 +212,8 @@
       </div>
       <button class="bigBtn" id="startBtn">시작</button>
       <div id="loadMsg"></div>
+      </div>
+     </div>
     </section>
 
     <!-- 암기 -->
@@ -532,6 +585,21 @@ $('startBtn').onclick = startGame;
 $('againBtn').onclick = () => { show('startScreen'); $('roundLabel').textContent = ''; $('scoreLabel').textContent = ''; setTop('대기', null, 0); };
 $('soundBtn').onclick = () => { soundOn = !soundOn; $('soundBtn').textContent = soundOn ? '🔊' : '🔇'; if (soundOn) audio(); };
 setTop('대기', null, 0);
+
+/* ===================== 화면 꺼짐 방지 (Wake Lock) ===================== */
+let wakeLock = null;
+async function keepAwake() {
+  if (!('wakeLock' in navigator) || document.visibilityState !== 'visible' || wakeLock) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (e) { wakeLock = null; }
+}
+// 다른 앱에 갔다 돌아오면 자동 해제되므로 다시 요청
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+// 일부 브라우저는 사용자 터치 후에만 허용 → 첫 터치마다 재시도
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, keepAwake, { passive: true }));
+keepAwake();
 </script>
 </body>
 </html>
