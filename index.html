@@ -147,9 +147,9 @@
       <h1>플래그 메모리</h1>
       <p class="desc">국기 10개가 1초씩 3번 지나갑니다 (30초).<br>5초 뒤 나타나는 25개 국기 중<br>앞에서 본 국기 <b>5개</b>를 1분 안에 찾으세요.</p>
       <div class="opt">
-        <h3>판 수</h3>
+        <h3>게임 수</h3>
         <div class="seg" id="roundSeg">
-          <button data-v="3" class="on">3판</button><button data-v="5">5판</button><button data-v="10">10판</button>
+          <button data-v="1">1게임</button><button data-v="3" class="on">3게임</button><button data-v="5">5게임</button>
         </div>
       </div>
       <div class="opt">
@@ -180,7 +180,7 @@
       <div class="legend hidden" id="legend"><span class="ly">정답</span><span class="lb">내 선택</span></div>
       <div id="resultBar" class="hidden">
         <span id="resultText"></span>
-        <button id="nextBtn">다음 판</button>
+        <button id="nextBtn">다음 게임</button>
       </div>
     </section>
 
@@ -353,7 +353,7 @@ async function startGame() {
 
 async function nextRound() {
   state.round++;
-  $('roundLabel').textContent = `${state.round} / ${state.rounds}판`;
+  $('roundLabel').textContent = `${state.round} / ${state.rounds}게임`;
   $('scoreLabel').textContent = `누적 ${state.scores.reduce((a, b) => a + b, 0)}점`;
   const R = makeRound();
 
@@ -364,7 +364,7 @@ async function nextRound() {
 
   // 0. 시작 3초 카운트
   show(null);
-  await centerCount(3, `${state.round}판 · 국기 10개를 기억하세요`, '시작');
+  await centerCount(3, `${state.round}게임 · 국기 10개를 기억하세요`, '시작');
 
   // 1. 암기 30초 (10개 × 1초 × 3회, 3회 모두 같은 순서)
   const order = shuffle(R.shown);
@@ -486,15 +486,15 @@ async function reveal(R, picked) {
 
   // 중앙 결과 표시
   $('popText').innerHTML = `5개 중 <b>${n}</b>개 정답`;
-  $('popSub').textContent = `${state.round}판 · 누적 ${total} / ${state.round * 5}점`;
+  $('popSub').textContent = `${state.round}게임 · 누적 ${total} / ${state.round * 5}점`;
   $('resultPop').classList.remove('hidden');
   n >= 4 ? SFX.fanfare() : SFX.soft();
   await wait(2000);
   $('resultPop').classList.add('hidden');
 
-  $('resultText').textContent = `${state.round}판: ${n} / 5점`;
+  $('resultText').textContent = `${state.round}게임: ${n} / 5점`;
   const last = state.round >= state.rounds;
-  $('nextBtn').textContent = last ? '최종 결과' : '다음 판';
+  $('nextBtn').textContent = last ? '최종 결과' : '다음 게임';
   $('resultBar').classList.remove('hidden');
   $('nextBtn').onclick = () => last ? finish() : nextRound();
 }
@@ -503,12 +503,12 @@ function finish() {
   show('finalScreen');
   const total = state.scores.reduce((a, b) => a + b, 0), max = state.rounds * 5;
   setTop('최종 결과', null, 0);
-  $('roundLabel').textContent = `${state.rounds}판 완료`;
+  $('roundLabel').textContent = `${state.rounds}게임 완료`;
   $('finalTotal').textContent = `${total} / ${max}점`;
   const diffName = { easy: '하', normal: '중', hard: '상' }[state.diff];
   $('finalSub').textContent = `난이도 ${diffName} · 정답률 ${Math.round(total / max * 100)}%`;
-  $('finalTable').innerHTML = '<tr><th>판</th><th>점수</th></tr>' +
-    state.scores.map((s, i) => `<tr><td>${i + 1}판</td><td style="text-align:left">${s} / 5<span class="barMini" style="width:${s * 14}px"></span></td></tr>`).join('');
+  $('finalTable').innerHTML = '<tr><th>게임</th><th>점수</th></tr>' +
+    state.scores.map((s, i) => `<tr><td>${i + 1}게임</td><td style="text-align:left">${s} / 5<span class="barMini" style="width:${s * 14}px"></span></td></tr>`).join('');
   total / max >= .7 ? SFX.fanfare() : SFX.soft();
 }
 
